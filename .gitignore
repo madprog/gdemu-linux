@@ -1,0 +1,6 @@
+/CMakeCache.txt
+/test/snake
+CMakeFiles/
+Makefile
+cmake_install.cmake
+lib*.a
