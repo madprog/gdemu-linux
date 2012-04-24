@@ -86,18 +86,18 @@ void GDClass::setpal(int pal, unsigned int rgb) {
 }
 
 void redraw_background(SDL_Surface *surface) {
-  int min_x = RAM[SCROLL_X] >> 3;
-  int min_y = RAM[SCROLL_Y] >> 3;
+  int min_x = (RAM[SCROLL_X] | ((RAM[SCROLL_X + 1] & 0x01) << 8)) >> 3;
+  int min_y = (RAM[SCROLL_Y] | ((RAM[SCROLL_Y + 1] & 0x01) << 8)) >> 3;
   uint16_t *pixels = (uint16_t *)surface->pixels;
 
   for(int y = min_y; y < min_y + 38; ++ y) {
     for(int x = min_x; x < min_x + 51; ++ x) {
-      byte char_idx = RAM[RAM_PIC + y * 64 + x];
+      byte char_idx = RAM[RAM_PIC + (y & 0x3f) * 64 + (x & 0x3f)];
       byte *char_data = RAM + RAM_CHR + (char_idx << 4);
       uint16_t *color_data = (uint16_t *)(RAM + RAM_PAL) + (char_idx << 2);
 
-      int first_pixel_x = (x << 3) - RAM[SCROLL_X];
-      int first_pixel_y = (y << 3) - RAM[SCROLL_Y];
+      int first_pixel_x = (x << 3) - (RAM[SCROLL_X] | ((RAM[SCROLL_X + 1] & 0x01) << 8));
+      int first_pixel_y = (y << 3) - (RAM[SCROLL_Y] | ((RAM[SCROLL_Y + 1] & 0x01) << 8));
       uint16_t *first_pixel = pixels + WINDOW_WIDTH * WINDOW_ZOOM * WINDOW_ZOOM * first_pixel_y + WINDOW_ZOOM * first_pixel_x;
 
       for(int py = 0; py < 8; ++ py) {
