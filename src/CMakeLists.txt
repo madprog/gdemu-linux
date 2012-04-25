@@ -1,4 +1,6 @@
 add_library(gdemu
+	SPI.cpp
+	Serial.cpp
 	GD.cpp)
 include_directories(gdemu
 	../include

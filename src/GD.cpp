@@ -85,6 +85,10 @@ void GDClass::setpal(int pal, unsigned int rgb) {
   wr16(RAM_PAL + (pal << 1), rgb);
 }
 
+void GDClass::sprite(int spr, int x, int y, byte image, byte palette, byte rot, byte jk) {
+  // TODO
+}
+
 void redraw_background(SDL_Surface *surface) {
   int min_x = (RAM[SCROLL_X] | ((RAM[SCROLL_X + 1] & 0x01) << 8)) >> 3;
   int min_y = (RAM[SCROLL_Y] | ((RAM[SCROLL_Y + 1] & 0x01) << 8)) >> 3;

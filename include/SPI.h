@@ -3,6 +3,7 @@
 
 #define PROGMEM
 
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -281,5 +282,12 @@ extern SPIClass SPI;
 
 void setup();
 void loop();
+
+#define pgm_read_byte_near(x) (*(x))
+
+int random(int x, int y);
+inline int random(int y) { return random(0, y); }
+
+#include "Serial.h"
 
 #endif//_SPI_H_INCLUDED

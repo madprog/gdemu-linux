@@ -1,16 +1,7 @@
 #include <SPI.h>
 #include <GD.h>
-#include <stdlib.h>
 
 #include "platformer.h"
-
-int random(int x, int y) {
-	return (random() % (y-x) + x);
-}
-
-int random(int y) {
-	return random(0, y);
-}
 
 int atxy(int x, int y)
 {
@@ -28,7 +19,7 @@ static void rect(unsigned int dst, byte x, byte y, byte w, byte h)
   }
 }
 
-#define SINGLE(x, y) (platformer_pic[(y) * 16 + (x)])
+#define SINGLE(x, y) (pgm_read_byte_near(&platformer_pic[(y) * 16 + (x)]))
 
 // Draw a random 8-character wide background column at picture RAM dst
 
@@ -109,13 +100,13 @@ void setup()
   GD.copy(RAM_PAL, platformer_pal, sizeof(platformer_pal));
 
   int i;
-  //for (i = 0; i < 256; i++)
-    //GD.sprite(i, 400, 400, 0, 0, 0);
+  for (i = 0; i < 256; i++)
+    GD.sprite(i, 400, 400, 0, 0, 0);
 
   for (i = 0; i < 64; i += 8) {
     draw_column(atxy(i, 0));
   }
-  //Serial.begin(1000000);
+  Serial.begin(1000000);
 }
 
 void loop()
