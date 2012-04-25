@@ -1,0 +1,63 @@
+#+TITLE:       GDemu for Linux
+#+AUTHOR:      Paul Morelle
+#+EMAIL:       madprog@htkc.org
+#+DATE:        2012-04-25
+#+DESCRIPTION: Gameduino Emulator for Linux
+#+KEYWORDS:    gameduino emulator linux
+#+LANGUAGE:    en
+#+OPTIONS:     H:3 num:t toc:2 \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:     TeX:t LaTeX:nil skip:nil d:nil todo:nil pri:nil tags:not-in-toc
+#+EXPORT_EXCLUDE_TAGS: exclude
+#+STARTUP:     showall
+
+ | Status:   | Under Development                          |
+ | Location: | [[https://github.com/madprog/gdemu-linux]] |
+ | Version:  | 0.0.1                                      |
+
+* Description
+
+  [[http://excamera.com/sphinx/gameduino/][Gameduino]] is a game adapter for Arduino.
+  The only problem is when you don't have any VGA screen around to display what you have programmed.
+
+  The goal of GDemu for Linux is to provide the GD library with a SDL display, on your development machine.
+  Then, you don't need any screen connected to your Gameduino board. You don't even need your arduino connected.
+
+* Usage
+
+  GDemu for Linux is compiled with [[http://cmake.org][CMake]] as a static library.
+  You should be able to build your project without source code modification.
+
+  - First, clone the source code:
+#+BEGIN_SRC
+$ git clone git://github.com/madprog/gdemu-linux.git
+#+END_SRC
+  - Make sure you have CMake, SDL, Make and G++ installed on your system. On Ubuntu or Debian:
+#+BEGIN_SRC
+$ sudo aptitude update
+$ sudo aptitude install cmake libsdl-dev make g++
+#+END_SRC
+  - Compile the library:
+#+BEGIN_SRC
+$ cd gdemu-linux
+$ cmake .
+$ make
+#+END_SRC
+  - Compile your project and link it with the resulting library:
+#+BEGIN_SRC
+$ cd ~/sketchbook
+$ ln -s my_project.ino my_project.cpp
+$ g++ -I/path/to/gdemu-linux/include -L/path/to/gdemu-linux/src -lgdemu my_project.cpp -o my_project
+#+END_SRC
+  - Run your project:
+#+BEGIN_SRC
+$ ./my_project
+#+END_SRC
+  - ...
+  - PROFIT!
+
+* Issues
+
+  If your project does not compile with GDemu for Linux, then you may be using an API which have not been developed yet.
+  Please fork the project and add what you need in your branch: I would pull and merge your work.
+
+  If the result in the SDL window differs from what you get with your Gameduino, this is a bug (and you should fill an issue if the bug is unknown).
