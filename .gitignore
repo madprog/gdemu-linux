@@ -1,6 +1,8 @@
 /CMakeCache.txt
+/test/palettes
 /test/scroll
 /test/snake
+/test/sprites256
 CMakeFiles/
 Makefile
 cmake_install.cmake

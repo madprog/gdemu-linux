@@ -285,6 +285,9 @@ void loop();
 
 #define pgm_read_byte_near(x) (*(x))
 
+#define lowByte(x) ((x) & 0x00ff)
+#define highByte(x) (((x) & 0xff00) >> 8)
+
 int random(int x, int y);
 inline int random(int y) { return random(0, y); }
 
