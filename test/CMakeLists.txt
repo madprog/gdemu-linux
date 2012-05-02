@@ -1,12 +1,5 @@
 include_directories(../include)
 
-add_executable(snake
-	main.cpp
-	snake.cpp
-	walls.cpp)
-target_link_libraries(snake
-	gdemu)
-
 add_executable(scroll
 	scroll.cpp)
 target_link_libraries(scroll
