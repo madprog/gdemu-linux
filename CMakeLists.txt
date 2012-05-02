@@ -6,4 +6,4 @@ set(CMAKE_CXX_FLAGS "-g -Wall")
 find_package(SDL)
 
 subdirs(src
-	test)
+	examples)
