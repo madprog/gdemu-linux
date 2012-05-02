@@ -207,18 +207,27 @@ void redraw_sprites(SDL_Surface *surface) {
 
     sprite_image = RAM + RAM_SPRIMG + ((image & 0x3f) << 8);
 
-    for(int spr_y = 0; spr_y < 16; ++ spr_y) {
-      for(int spr_x = 0; spr_x < 16; ++ spr_x) {
-        if(((x + spr_x) & 0x1ff) >= 0
-            && ((x + spr_x) & 0x1ff) < WINDOW_WIDTH
-            && ((y + spr_y) & 0x1ff) >= 0
-            && ((y + spr_y) & 0x1ff) < WINDOW_HEIGHT) {
+    for(byte spr_y = 0; spr_y < 16; ++ spr_y) {
+      for(byte spr_x = 0; spr_x < 16; ++ spr_x) {
+        byte spr_rot_y = spr_y;
+        byte spr_rot_x = spr_x;
+        if(rot & 0x04) spr_rot_y = 15 - spr_rot_y;
+        if(rot & 0x02) spr_rot_x = 15 - spr_rot_x;
+        if(rot & 0x01) {
+          byte tmp = spr_rot_x;
+          spr_rot_x = spr_rot_y;
+          spr_rot_y = tmp;
+        }
+        if(((x + spr_rot_x) & 0x1ff) >= 0
+            && ((x + spr_rot_x) & 0x1ff) < WINDOW_WIDTH
+            && ((y + spr_rot_y) & 0x1ff) >= 0
+            && ((y + spr_rot_y) & 0x1ff) < WINDOW_HEIGHT) {
           for(int j = 0; j < WINDOW_ZOOM; ++ j) {
             for(int i = 0; i < WINDOW_ZOOM; ++ i) {
               byte color_index = (sprite_image[(spr_y << 4) | spr_x] & palette_mask) >> palette_shift;
               uint16_t color = palette_ptr[color_index];
               if(!(color & 0x8000)) {
-                pixels[(((y + spr_y) & 0x1ff) * WINDOW_ZOOM + j) * WINDOW_ZOOM * WINDOW_WIDTH + ((x + spr_x) & 0x1ff) * WINDOW_ZOOM + i] = color;
+                pixels[(((y + spr_rot_y) & 0x1ff) * WINDOW_ZOOM + j) * WINDOW_ZOOM * WINDOW_WIDTH + ((x + spr_rot_x) & 0x1ff) * WINDOW_ZOOM + i] = color;
               }
             }
           }

@@ -14,3 +14,8 @@ add_executable(sprites256
 	sprites256.cpp)
 target_link_libraries(sprites256
 	gdemu)
+
+add_executable(rotate
+	rotate.cpp)
+target_link_libraries(rotate
+	gdemu)
