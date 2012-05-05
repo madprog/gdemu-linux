@@ -19,3 +19,8 @@ add_executable(rotate
 	rotate.cpp)
 target_link_libraries(rotate
 	gdemu)
+
+add_executable(collision
+	collision.cpp)
+target_link_libraries(collision
+	gdemu)

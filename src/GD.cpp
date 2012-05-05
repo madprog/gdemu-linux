@@ -1,4 +1,6 @@
 #include <SDL.h>
+#include <pthread.h>
+#include <unistd.h>
 #include <time.h>
 
 #include "SPI.h"
@@ -12,9 +14,6 @@ static byte RAM[RAM_SIZE];
 #define WINDOW_ZOOM 2
 
 void GDClass::begin() {
-  SDL_Init(SDL_INIT_VIDEO);
-  SDL_SetVideoMode(WINDOW_WIDTH * WINDOW_ZOOM, WINDOW_HEIGHT * WINDOW_ZOOM, 15, SDL_HWSURFACE|SDL_DOUBLEBUF);
-
   // Hide all sprites
   for(int spr = 0; spr < 512; ++ spr) {
     *(RAM + RAM_SPR + (spr << 2) + 0) = lowByte(400);
@@ -28,7 +27,48 @@ void GDClass::end() {
   SDL_Quit();
 }
 
+byte spi_on, spi_writing;
+uint16_t spi_addr;
+
+void GDClass::__start(unsigned int addr) {
+  spi_on = 1;
+  spi_addr = addr & 0x7fff;
+  spi_writing = (addr & 0x8000) >> 15;
+}
+
+void GDClass::__wstart(unsigned int addr) {
+  __start(0x8000|addr);
+}
+
+void GDClass::__wstartspr(unsigned int sprnum) {
+  __start((0x8000 | RAM_SPR) + (sprnum << 2));
+  spr = 0;
+}
+
+byte SPIClass::transfer(byte v) {
+  if(spi_on) {
+    if(spi_writing) {
+      RAM[spi_addr++] = v;
+    } else {
+      return RAM[spi_addr++];
+    }
+  }
+  return 0;
+}
+
+void GDClass::__end() {
+  spi_on = 0;
+}
+
+byte GDClass::rd(unsigned int addr) {
+  return RAM[addr % RAM_SIZE];
+}
+
 void GDClass::waitvblank() {
+  while (GD.rd(VBLANK) == 1)  // Wait until display
+    ;
+  while (GD.rd(VBLANK) == 0)  // Wait until vblank
+    ;
 }
 
 void GDClass::copy(unsigned int addr, prog_uchar *src, int count) {
@@ -140,8 +180,12 @@ void redraw_background(SDL_Surface *surface) {
 void redraw_sprites(SDL_Surface *surface) {
   uint16_t *pixels = (uint16_t *)surface->pixels;
 
-  for(int spr_ = 0; spr_ < 256; ++ spr_) {
-    byte *sprite_ptr = RAM + RAM_SPR + 4 * spr_;
+  int16_t spr_buffer[WINDOW_HEIGHT * WINDOW_WIDTH];
+  memset(spr_buffer, 0xff, sizeof(spr_buffer));
+  memset(RAM + COLLISION, 0xff, 256);
+
+  for(int spr = 0; spr < 256; ++ spr) {
+    byte *sprite_ptr = RAM + RAM_SPR + 4 * spr;
     int x, y;
     byte rot, palette, image, jk;
     uint16_t palette_nb_colors = 0;
@@ -218,15 +262,30 @@ void redraw_sprites(SDL_Surface *surface) {
           spr_rot_x = spr_rot_y;
           spr_rot_y = tmp;
         }
-        if(((x + spr_rot_x) & 0x1ff) >= 0
-            && ((x + spr_rot_x) & 0x1ff) < WINDOW_WIDTH
-            && ((y + spr_rot_y) & 0x1ff) >= 0
-            && ((y + spr_rot_y) & 0x1ff) < WINDOW_HEIGHT) {
-          for(int j = 0; j < WINDOW_ZOOM; ++ j) {
-            for(int i = 0; i < WINDOW_ZOOM; ++ i) {
-              byte color_index = (sprite_image[(spr_y << 4) | spr_x] & palette_mask) >> palette_shift;
-              uint16_t color = palette_ptr[color_index];
-              if(!(color & 0x8000)) {
+        uint16_t win_x = (x + spr_rot_x) & 0x1ff;
+        uint16_t win_y = (y + spr_rot_y) & 0x1ff;
+        if(win_x >= 0
+            && win_x < WINDOW_WIDTH
+            && win_y >= 0
+            && win_y < WINDOW_HEIGHT) {
+          byte color_index = (sprite_image[(spr_y << 4) | spr_x] & palette_mask) >> palette_shift;
+          uint16_t color = palette_ptr[color_index];
+
+          if(!(color & 0x8000)) {
+            int spr_buffer_index = win_y * WINDOW_WIDTH + win_x;
+            int16_t spr2 = spr_buffer[spr_buffer_index];
+            if(spr2 != -1) {
+              byte *sprite2_ptr = RAM + RAM_SPR + 4 * spr2;
+              byte jk2 = (sprite2_ptr[3] & 0x80) >> 7;
+
+              if(!RAM[JK_MODE] || (jk ^ jk2)) {
+                RAM[COLLISION + spr] = spr2;
+              }
+            }
+            spr_buffer[spr_buffer_index] = spr;
+
+            for(int j = 0; j < WINDOW_ZOOM; ++ j) {
+              for(int i = 0; i < WINDOW_ZOOM; ++ i) {
                 pixels[(((y + spr_rot_y) & 0x1ff) * WINDOW_ZOOM + j) * WINDOW_ZOOM * WINDOW_WIDTH + ((x + spr_rot_x) & 0x1ff) * WINDOW_ZOOM + i] = color;
               }
             }
@@ -237,35 +296,94 @@ void redraw_sprites(SDL_Surface *surface) {
   }
 }
 
+byte thread_do_exit = 0;
+pthread_mutex_t thread_running = PTHREAD_MUTEX_INITIALIZER;
+void *thread_proc(void *unused) {
+  setup();
+
+  while(!thread_do_exit) {
+    loop();
+    sleep(0);
+  }
+
+  pthread_mutex_unlock(&thread_running);
+
+  return NULL;
+}
+
 int main() {
-  const struct timespec sleep_time = { 0, 10000000 }; // 10 ms
+  const struct timespec sleep_time = { 0, 13888888 }; // 72 Hz
+  struct timespec start_date, end_date;
   byte do_exit = 0;
   SDL_Event event;
   SDL_Surface *surface;
+  pthread_t thread;
 
   memset(RAM, 0, RAM_SIZE);
 
-  setup();
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_SetVideoMode(WINDOW_WIDTH * WINDOW_ZOOM, WINDOW_HEIGHT * WINDOW_ZOOM, 15, SDL_HWSURFACE|SDL_DOUBLEBUF);
 
-  while(!do_exit && clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, NULL) == 0) {
+  pthread_mutex_lock(&thread_running);
+  pthread_create(&thread, NULL, thread_proc, NULL);
+  sleep(0);
+
+  while(!do_exit && pthread_mutex_trylock(&thread_running) != 0) {
+    clock_gettime(CLOCK_REALTIME, &start_date);
+
     while(SDL_PollEvent(&event)) {
       switch(event.type) {
         case SDL_QUIT:
-          do_exit = 1;
+          thread_do_exit = 1;
       }
     }
 
-    surface = SDL_GetVideoSurface();
+    RAM[VBLANK] = 1;
+    if(pthread_mutex_trylock(&thread_running) != 0) {
+      surface = SDL_GetVideoSurface();
 
-    SDL_LockSurface(surface);
-    redraw_background(surface);
-    redraw_sprites(surface);
-    SDL_UnlockSurface(surface);
+      SDL_LockSurface(surface);
+      redraw_background(surface);
+      redraw_sprites(surface);
+      SDL_UnlockSurface(surface);
 
-    SDL_Flip(surface);
+      SDL_Flip(surface);
+    } else {
+      pthread_mutex_unlock(&thread_running);
+      do_exit = 1;
+    }
 
-    loop();
+    // Ensure that the other thread can see Display state
+    sleep(0);
+
+    RAM[VBLANK] = 0;
+
+    start_date.tv_sec += sleep_time.tv_sec;
+    start_date.tv_nsec += sleep_time.tv_nsec;
+    while(start_date.tv_nsec >= 1000000000) {
+      start_date.tv_sec += 1;
+      start_date.tv_nsec -= 1000000000;
+    }
+
+    clock_gettime(CLOCK_REALTIME, &end_date);
+
+    end_date.tv_sec -= start_date.tv_sec;
+    end_date.tv_nsec -= start_date.tv_nsec;
+    while(end_date.tv_nsec < 0) {
+      end_date.tv_sec -= 1;
+      end_date.tv_nsec += 1000000000;
+    }
+
+    if(end_date.tv_sec > 0 || end_date.tv_nsec > 0) {
+      clock_nanosleep(CLOCK_REALTIME, 0, &end_date, NULL);
+    }
   }
+
+  if(!do_exit) {
+    pthread_mutex_unlock(&thread_running);
+  }
+
+  pthread_join(thread, NULL);
 
   GD.end();
 }

@@ -3,6 +3,7 @@
 
 #define PROGMEM
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -275,7 +276,7 @@ typedef short unsigned int uint16_t;
 
 class SPIClass {
   public:
-    inline byte transfer(byte b) { return 0; }
+    byte transfer(byte b);
 };
 
 extern SPIClass SPI;
@@ -290,6 +291,8 @@ void loop();
 
 int random(int x, int y);
 inline int random(int y) { return random(0, y); }
+
+void delay(unsigned long ms);
 
 #include "Serial.h"
 
